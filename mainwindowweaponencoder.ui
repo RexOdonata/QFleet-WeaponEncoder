@@ -114,9 +114,19 @@
               </spacer>
              </item>
              <item>
-              <widget class="QCheckBox" name="VarAtkCheck">
+              <widget class="QCheckBox" name="randomAttacks">
                <property name="text">
-                <string>Variable</string>
+                <string>Random</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QSpinBox" name="randomAttackDiceCount"/>
+             </item>
+             <item>
+              <widget class="dropdownButton" name="randomAttackDiceType">
+               <property name="text">
+                <string>...</string>
                </property>
               </widget>
              </item>

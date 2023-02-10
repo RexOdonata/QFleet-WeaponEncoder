@@ -14,6 +14,8 @@
 
 #include <QFileDialog>
 
+#include <QRegularExpression>>
+
 
 MainWindowWeaponEncoder::MainWindowWeaponEncoder(QWidget *parent)
     : QMainWindow(parent)
@@ -63,10 +65,14 @@ MainWindowWeaponEncoder::MainWindowWeaponEncoder(QWidget *parent)
     ui->specialSelect->addItem("Squadron-X","Squadron-(X)");
     ui->specialSelect->addItem("Unstable");
 
+    ui->randomAttackDiceType->addItem("D3");
+    ui->randomAttackDiceType->addItem("D6");
+
 
     ui->lockButton->initMenu();
     ui->facingButton->initMenu();
-    ui->specialSelect->initMenu();
+    ui->specialSelect->initMenu();    
+    ui->randomAttackDiceType->initMenu();
 
     listModel = new QStringListModel(this);
     ui->listView->setModel(listModel);
@@ -86,12 +92,35 @@ void MainWindowWeaponEncoder::on_SaveWeaponButton_clicked()
     QString name = ui->NameEdit->text();
     QString lock = ui->lockButton->getItemValue();
     QString facing = ui->facingButton->getItemValue();
+    QString baseAttacks;
+    QString randomAttacks= "";
+    QString attacks="";
 
-    QString attacks;
-    if (ui->VarAtkCheck->isChecked())
-        attacks = "X";
+    //logic is a bit tricky here
+    if (ui->randomAttacks->isChecked())
+    {
+        // first, only add the number of dice to the display string if using more than one
+        if (ui->randomAttackDiceCount->value()> 1)
+           attacks.append(ui->randomAttackDiceCount->text());
+
+        attacks.append(ui->randomAttackDiceType->getItemValue());
+
+        // only add the base attacks to display string if greater than 0
+        if (ui->AttackEdit->value() > 0)
+            attacks.append("+"  + ui->AttackEdit->text());
+
+        //actually set the values for internal tracking
+        randomAttacks=  ui->randomAttackDiceCount->text() + ui->randomAttackDiceType->getItemValue();
+        baseAttacks = ui->AttackEdit->text();
+    }
     else
-        attacks = ui->AttackEdit->text();
+    {
+        baseAttacks = ui->AttackEdit->text();
+        attacks = baseAttacks;
+    }
+
+
+
 
     QString damage;
     if (ui->VarDmgCheck->isChecked())
@@ -105,11 +134,16 @@ void MainWindowWeaponEncoder::on_SaveWeaponButton_clicked()
     if (special.length() > 0 && special.back() == '\n')
         special.erase(special.constEnd()-1, special.constEnd());
 
+    // ATTACKS is the actual displayed value that is passed alone
+    // baseATTACKS and randomATTACKs are used for internal purposes only
+
     newWeapon.insert("id",id);
     newWeapon.insert("name",name);
     newWeapon.insert("lock",lock);
     newWeapon.insert("facing",facing);
     newWeapon.insert("attacks",attacks);
+    newWeapon.insert("randomAttacks",randomAttacks);
+    newWeapon.insert("baseAttacks",baseAttacks);
     newWeapon.insert("damage",damage);
     newWeapon.insert("special",special);
 
@@ -245,16 +279,18 @@ void MainWindowWeaponEncoder::on_loadButton_clicked()
         ui->lockButton->setValue(weapon["lock"].toString());
         ui->facingButton->setValue(weapon["facing"].toString());
 
-        if (weapon["attacks"].toString() == "X")
+        if (weapon["randomAttacks"].toVariant().toString().length() > 0)
         {
-            ui->VarAtkCheck->setCheckState(Qt::Checked);
+            QString randomAttacks = weapon["randomAttacks"].toVariant().toString();
+            QStringList properties = randomAttacks.split("D");
+            ui->randomAttackDiceCount->setValue(properties[0].toInt());
+            ui->randomAttackDiceType->setValue(properties[1]);
         }
         else
-        {
-            ui->VarAtkCheck->setCheckState(Qt::Unchecked);
-            int val = weapon["attacks"].toVariant().toInt();
-            ui->AttackEdit->setValue(val);
-        }
+            ui->randomAttacks->setCheckState(Qt::Unchecked);
+
+
+        ui->AttackEdit->setValue(weapon["baseAttacks"].toVariant().toInt());
 
         if (weapon["damage"].toString() == "X")
         {
