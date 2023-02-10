@@ -33,18 +33,28 @@ private slots:
 
     void on_actionOpen_triggered();
 
+    void on_specialReset_clicked();
+
 private:
     Ui::MainWindowWeaponEncoder *ui;
 
-    QStringListModel * listModel;
+    QStringListModel * listModelWeapons;
 
     QVector<QJsonObject> weaponData;
+
+    QVector<QString> specialRules;
+
+    QStringListModel * listModelSpecial;
 
     void fileSave();
 
     void fileOpen();
 
-    void refreshList();
+    void refreshWeaponList();
+
+    void refreshSpecialList();
+
+    QString AssembleSpecialRules();
 
 };
 #endif // MAINWINDOWWEAPONENCODER_H

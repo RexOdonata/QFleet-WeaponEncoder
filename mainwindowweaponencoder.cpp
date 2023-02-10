@@ -14,7 +14,7 @@
 
 #include <QFileDialog>
 
-#include <QRegularExpression>>
+#include <QRegularExpression>
 
 
 MainWindowWeaponEncoder::MainWindowWeaponEncoder(QWidget *parent)
@@ -74,8 +74,11 @@ MainWindowWeaponEncoder::MainWindowWeaponEncoder(QWidget *parent)
     ui->specialSelect->initMenu();    
     ui->randomAttackDiceType->initMenu();
 
-    listModel = new QStringListModel(this);
-    ui->listView->setModel(listModel);
+    listModelWeapons = new QStringListModel(this);
+    ui->weaponView->setModel(listModelWeapons);
+
+    listModelSpecial = new QStringListModel(this);
+    ui->specialView->setModel(listModelSpecial);
 }
 
 MainWindowWeaponEncoder::~MainWindowWeaponEncoder()
@@ -83,6 +86,19 @@ MainWindowWeaponEncoder::~MainWindowWeaponEncoder()
     delete ui;
 }
 
+
+QString MainWindowWeaponEncoder::AssembleSpecialRules()
+{
+    QString output="";
+
+    for (auto& rule : specialRules)
+    {
+        output.append(rule + ",");
+    }
+
+    if (output.length() > 1 && output.back() == ',')
+        output.resize(output.size()-1);
+}
 
 void MainWindowWeaponEncoder::on_SaveWeaponButton_clicked()
 {
@@ -128,11 +144,7 @@ void MainWindowWeaponEncoder::on_SaveWeaponButton_clicked()
     else
         damage = ui->DmgEdit->text();
 
-    QString special = ui->SpecialEdit->toPlainText();
-
-    special.replace("\n",",");
-    if (special.length() > 0 && special.back() == '\n')
-        special.erase(special.constEnd()-1, special.constEnd());
+    QString special = AssembleSpecialRules();
 
     // ATTACKS is the actual displayed value that is passed alone
     // baseATTACKS and randomATTACKs are used for internal purposes only
@@ -141,11 +153,20 @@ void MainWindowWeaponEncoder::on_SaveWeaponButton_clicked()
     newWeapon.insert("name",name);
     newWeapon.insert("lock",lock);
     newWeapon.insert("facing",facing);
-    newWeapon.insert("attacks",attacks);
+    newWeapon.insert("attacksDisplay",attacks);
     newWeapon.insert("randomAttacks",randomAttacks);
     newWeapon.insert("baseAttacks",baseAttacks);
     newWeapon.insert("damage",damage);
-    newWeapon.insert("special",special);
+    newWeapon.insert("specialDisplay",special);
+
+    QJsonArray specialRulesArray;
+
+    for (auto& rule : specialRules)
+    {
+        specialRulesArray.push_back(rule);
+    }
+
+    newWeapon.insert("specialList",specialRulesArray);
 
     bool exists = false;
 
@@ -166,7 +187,7 @@ void MainWindowWeaponEncoder::on_SaveWeaponButton_clicked()
     else
         weaponData.push_back(newWeapon);
 
-    refreshList();
+    refreshWeaponList();
 
 }
 
@@ -180,15 +201,12 @@ void MainWindowWeaponEncoder::on_specialAdd_clicked()
         special.replace("(X)",ui->specialX->text());
     }
 
-    ui->SpecialEdit->append(special);
+    specialRules.push_back(special);
+
+    refreshSpecialList();
 
 }
 
-
-void MainWindowWeaponEncoder::on_specialRest_clicked()
-{
-     ui->SpecialEdit->clear();
-}
 
 void MainWindowWeaponEncoder::fileSave()
 {
@@ -244,10 +262,10 @@ void MainWindowWeaponEncoder::fileOpen()
 
     }
 
-    refreshList();
+    refreshWeaponList();
 }
 
-void MainWindowWeaponEncoder::refreshList()
+void MainWindowWeaponEncoder::refreshWeaponList()
 {
     QStringList list;
 
@@ -257,16 +275,24 @@ void MainWindowWeaponEncoder::refreshList()
         list.push_back(name);
     }
 
-    listModel->setStringList(list);
+    listModelWeapons->setStringList(list);
+}
 
+void MainWindowWeaponEncoder::refreshSpecialList()
+{
+    QStringList list;
 
+    for (auto& element : specialRules)
+        list.push_back(element);
+
+    listModelSpecial->setStringList(list);
 }
 
 void MainWindowWeaponEncoder::on_loadButton_clicked()
 {
-    if (ui->listView->selectionModel()->selectedIndexes().size() > 0)
+    if (ui->weaponView->selectionModel()->selectedIndexes().size() > 0)
     {
-        auto index = ui->listView->selectionModel()->selectedIndexes().front().row();
+        auto index = ui->weaponView->selectionModel()->selectedIndexes().front().row();
 
         QJsonObject weapon = weaponData.at(index);
 
@@ -283,8 +309,10 @@ void MainWindowWeaponEncoder::on_loadButton_clicked()
         {
             QString randomAttacks = weapon["randomAttacks"].toVariant().toString();
             QStringList properties = randomAttacks.split("D");
-            ui->randomAttackDiceCount->setValue(properties[0].toInt());
-            ui->randomAttackDiceType->setValue(properties[1]);
+            int val = properties[0].toInt();
+            ui->randomAttackDiceCount->setValue(val);
+            ui->randomAttackDiceType->setValue("D" + properties[1]);
+            ui->randomAttacks->setCheckState(Qt::Checked);
         }
         else
             ui->randomAttacks->setCheckState(Qt::Unchecked);
@@ -303,22 +331,26 @@ void MainWindowWeaponEncoder::on_loadButton_clicked()
             ui->DmgEdit->setValue(val);
         }
 
-        QString special = weapon["special"].toString();
-        ui->SpecialEdit->clear();
-        ui->SpecialEdit->insertPlainText(special);
+        specialRules.clear();
+        QJsonArray specialRulesList = weapon["specialList"].toArray();
+
+        for (auto rule : specialRulesList)
+            specialRules.push_back(rule.toVariant().toString());
+
+        refreshSpecialList();
     }
 }
 
 
 void MainWindowWeaponEncoder::on_DeleteButton_clicked()
 {
-    if (ui->listView->selectionModel()->selectedIndexes().size() > 0)
+    if (ui->weaponView->selectionModel()->selectedIndexes().size() > 0)
     {
-        auto index = ui->listView->selectionModel()->selectedIndexes().front().row();
+        auto index = ui->weaponView->selectionModel()->selectedIndexes().front().row();
 
         weaponData.remove(index);
 
-        refreshList();
+        refreshWeaponList();
     }
 }
 
@@ -332,5 +364,12 @@ void MainWindowWeaponEncoder::on_actionSave_triggered()
 void MainWindowWeaponEncoder::on_actionOpen_triggered()
 {
     fileOpen();
+}
+
+
+void MainWindowWeaponEncoder::on_specialReset_clicked()
+{
+    specialRules.clear();
+    refreshSpecialList();
 }
 

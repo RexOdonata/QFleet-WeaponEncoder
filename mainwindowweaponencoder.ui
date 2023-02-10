@@ -260,7 +260,7 @@
           </widget>
          </item>
          <item>
-          <widget class="QPushButton" name="specialRest">
+          <widget class="QPushButton" name="specialReset">
            <property name="text">
             <string>Reset</string>
            </property>
@@ -269,7 +269,7 @@
         </layout>
        </item>
        <item>
-        <widget class="QTextEdit" name="SpecialEdit"/>
+        <widget class="QListView" name="specialView"/>
        </item>
       </layout>
      </item>
@@ -308,7 +308,7 @@
         </widget>
        </item>
        <item>
-        <widget class="QListView" name="listView">
+        <widget class="QListView" name="weaponView">
          <property name="editTriggers">
           <set>QAbstractItemView::NoEditTriggers</set>
          </property>
